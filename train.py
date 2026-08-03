@@ -3,20 +3,29 @@ from torchvision import datasets, transforms
 from torch.utils.data import DataLoader
 import matplotlib.pyplot as plt
 
-transform = transforms.ToTensor()
+train_transform = transforms.Compose([
+    transforms.RandomRotation(10),
+    transforms.RandomAffine(
+        degrees=0,
+        translate=(0.1, 0.1)
+    ),
+    transforms.ToTensor()
+])
+
+test_transform = transforms.ToTensor()
 
 train_dataset = datasets.MNIST(
     root="data",
     train=True,
     download=True,
-    transform=transform
+    transform=train_transform
 )
 
 test_dataset = datasets.MNIST(
     root="data",
     train=False,
     download=True,
-    transform=transform
+    transform=test_transform
 )
 
 print(len(train_dataset))
