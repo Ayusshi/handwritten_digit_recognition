@@ -1,21 +1,39 @@
-import torch
+"""
+model.py
+
+Contains the CNN architecture for handwritten digit recognition.
+"""
+
 import torch.nn as nn
 
+from config import (
+    INPUT_CHANNELS,
+    NUM_CLASSES
+)
+
+
 class CNN(nn.Module):
+    """
+    Convolutional Neural Network for MNIST classification.
+    """
 
     def __init__(self):
         super().__init__()
 
+        # ==========================
+        # Feature Extraction
+        # ==========================
+
         self.conv1 = nn.Conv2d(
-            in_channels=1,
+            in_channels=INPUT_CHANNELS,
             out_channels=32,
             kernel_size=3,
             padding=1
         )
 
-        self.relu = nn.ReLU()
+        self.relu1 = nn.ReLU()
 
-        self.pool = nn.MaxPool2d(
+        self.pool1 = nn.MaxPool2d(
             kernel_size=2,
             stride=2
         )
@@ -27,34 +45,55 @@ class CNN(nn.Module):
             padding=1
         )
 
+        self.relu2 = nn.ReLU()
+
+        self.pool2 = nn.MaxPool2d(
+            kernel_size=2,
+            stride=2
+        )
+
+        # ==========================
+        # Classifier
+        # ==========================
+
+        self.flatten = nn.Flatten()
+
         self.fc1 = nn.Linear(
             64 * 7 * 7,
             128
         )
 
+        self.relu3 = nn.ReLU()
+
         self.fc2 = nn.Linear(
             128,
-            10
+            NUM_CLASSES
         )
 
-def forward(self, x):
+    def forward(self, x):
+        """
+        Defines how data flows through the network.
+        """
 
-    x = self.conv1(x)
-    x = self.relu1(x)
-    x = self.pool1(x)
+        # Feature Extraction
 
-    x = self.conv2(x)
-    x = self.relu2(x)
-    x = self.pool2(x)
+        x = self.conv1(x)
+        x = self.relu1(x)
+        x = self.pool1(x)
 
-    x = self.flatten(x)
+        x = self.conv2(x)
+        x = self.relu2(x)
+        x = self.pool2(x)
 
-    x = self.fc1(x)
-    x = self.relu3(x)
+        # Flatten
 
-    x = self.fc2(x)
+        x = self.flatten(x)
 
-    return x
+        # Classification
 
-model = CNN()
-print(model)
+        x = self.fc1(x)
+        x = self.relu3(x)
+
+        x = self.fc2(x)
+
+        return x

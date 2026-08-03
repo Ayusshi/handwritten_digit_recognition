@@ -1,77 +1,147 @@
+"""
+train.py
+
+Trains the CNN model on the MNIST dataset.
+"""
+
 import torch
-from torchvision import datasets, transforms
-from torch.utils.data import DataLoader
-import matplotlib.pyplot as plt
+import torch.nn as nn
+import torch.optim as optim
 
-train_transform = transforms.Compose([
-    transforms.RandomRotation(10),
-    transforms.RandomAffine(
-        degrees=0,
-        translate=(0.1, 0.1)
-    ),
-    transforms.ToTensor()
-])
-
-test_transform = transforms.ToTensor()
-
-train_dataset = datasets.MNIST(
-    root="data",
-    train=True,
-    download=True,
-    transform=train_transform
+from config import (
+    LEARNING_RATE,
+    NUM_EPOCHS,
+    MODEL_SAVE_PATH
 )
 
-test_dataset = datasets.MNIST(
-    root="data",
-    train=False,
-    download=True,
-    transform=test_transform
+from dataset import get_data_loaders
+from model import CNN
+
+from utils import (
+    get_device,
+    save_model,
+    count_parameters,
+    calculate_accuracy
 )
 
-print(len(train_dataset))
-print(len(test_dataset))
 
-image, label = train_dataset[0]
-print(image.shape)
-print(label)
+def train():
 
-plt.imshow(image.squeeze(), cmap="gray")
-plt.title(f"Label: {label}")
-plt.show()
+    # ==========================================
+    # Device
+    # ==========================================
 
-train_loader = DataLoader(
-    dataset=train_dataset,
-    batch_size=64,
-    shuffle=True
-)
+    device = get_device()
 
-test_loader = DataLoader(
-    dataset=test_dataset,
-    batch_size=64,
-    shuffle=False
-)
+    print(f"Using device: {device}")
 
-images, labels = next(iter(train_loader))
+    # ==========================================
+    # Data
+    # ==========================================
 
-print(images.shape)
-print(labels.shape)
+    train_loader, test_loader = get_data_loaders()
 
-image = images[0]
-print(image.shape)
-print(labels[0])
+    # ==========================================
+    # Model
+    # ==========================================
 
-# display first image
-plt.imshow(images[0].squeeze(), cmap="gray")
-plt.title(f"Label: {labels[0].item()}")
-plt.show()
+    model = CNN().to(device)
 
-# display first 10 images
-fig, axes = plt.subplots(2, 5, figsize=(10, 5))
+    print(model)
 
-for i, ax in enumerate(axes.flat):
-    ax.imshow(images[i].squeeze(), cmap="gray")
-    ax.set_title(labels[i].item())
-    ax.axis("off")
+    print(f"\nTrainable Parameters: {count_parameters(model):,}")
 
-plt.tight_layout()
-plt.show()
+    # ==========================================
+    # Loss Function
+    # ==========================================
+
+    criterion = nn.CrossEntropyLoss()
+
+    # ==========================================
+    # Optimizer
+    # ==========================================
+
+    optimizer = optim.Adam(
+        model.parameters(),
+        lr=LEARNING_RATE
+    )
+
+    # ==========================================
+    # Training
+    # ==========================================
+
+    for epoch in range(NUM_EPOCHS):
+
+        model.train()
+
+        running_loss = 0.0
+
+        for images, labels in train_loader:
+
+            images = images.to(device)
+            labels = labels.to(device)
+
+            outputs = model(images)
+
+            loss = criterion(
+                outputs,
+                labels
+            )
+
+            optimizer.zero_grad()
+
+            loss.backward()
+
+            optimizer.step()
+
+            running_loss += loss.item()
+
+        train_loss = running_loss / len(train_loader)
+
+        # ======================================
+        # Evaluation
+        # ======================================
+
+        model.eval()
+
+        correct = 0
+        total = 0
+
+        with torch.no_grad():
+
+            for images, labels in test_loader:
+
+                images = images.to(device)
+                labels = labels.to(device)
+
+                outputs = model(images)
+
+                correct += calculate_accuracy(
+                    outputs,
+                    labels
+                )
+
+                total += labels.size(0)
+
+        accuracy = (correct / total) * 100
+
+        print(
+            f"Epoch [{epoch + 1}/{NUM_EPOCHS}] "
+            f"Loss: {train_loss:.4f} "
+            f"Accuracy: {accuracy:.2f}%"
+        )
+
+    # ==========================================
+    # Save Model
+    # ==========================================
+
+    save_model(
+        model,
+        MODEL_SAVE_PATH
+    )
+
+    print("\nTraining Finished Successfully!")
+
+
+if __name__ == "__main__":
+    train()
