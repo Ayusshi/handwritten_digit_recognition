@@ -69,7 +69,7 @@ def predict(image_path):
 # -----------------------------------
 if __name__ == "__main__":
 
-    image_path = "test_images/digit3.jpg"
+    image_path = "test_images/digit1.jpg"
 
     prediction = predict(image_path)
 
