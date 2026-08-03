@@ -1,107 +1,78 @@
-"""
-predict.py
-
-Loads a trained CNN model and predicts
-a single handwritten digit image.
-"""
-
 import torch
+import torchvision.transforms as transforms
 from PIL import Image
-from torchvision import transforms
-
+import config
 from model import CNN
+from preprocess import preprocess_image
 
-from config import (
-    MODEL_SAVE_PATH,
-    IMAGE_SIZE
-)
+# print(config.__file__)
+# print(dir(config))
 
-from utils import (
-    get_device,
-    load_model
-)
+# exit()
+
+# -----------------------------------
+# Device
+# -----------------------------------
+device = torch.device(config.DEVICE)
 
 
-def predict(image_path):
-    """
-    Predicts a handwritten digit from an image.
+# -----------------------------------
+# Load model
+# -----------------------------------
+model = CNN().to(device)
 
-    Args:
-        image_path (str): Path to image.
-    """
-
-    # ==========================================
-    # Device
-    # ==========================================
-
-    device = get_device()
-
-    # ==========================================
-    # Load Model
-    # ==========================================
-
-    model = CNN()
-
-    model = load_model(
-        model,
-        MODEL_SAVE_PATH,
-        device
+model.load_state_dict(
+    torch.load(
+        config.MODEL_PATH,
+        map_location=device
     )
+)
 
-    # ==========================================
-    # Image Transform
-    # ==========================================
+model.eval()
 
-    transform = transforms.Compose([
-        transforms.Grayscale(),
 
-        transforms.Resize(
-            (IMAGE_SIZE, IMAGE_SIZE)
-        ),
+# -----------------------------------
+# Transform
+# -----------------------------------
+transform = transforms.Compose([
+    transforms.ToTensor(),
+    transforms.Normalize((0.1307,), (0.3081,))
+])
 
-        transforms.ToTensor()
-    ])
 
-    # ==========================================
-    # Load Image
-    # ==========================================
+# -----------------------------------
+# Prediction Function
+# -----------------------------------
+def predict(image_path):
 
-    image = Image.open(image_path)
+    processed = preprocess_image(image_path)
+
+    image = Image.fromarray(processed)
 
     image = transform(image)
 
-    # Add batch dimension
     image = image.unsqueeze(0)
 
     image = image.to(device)
 
-    # ==========================================
-    # Prediction
-    # ==========================================
-
     with torch.no_grad():
 
-        outputs = model(image)
+        output = model(image)
 
-        probabilities = torch.softmax(
-            outputs,
-            dim=1
-        )
+        prediction = output.argmax(dim=1).item()
 
-        confidence, prediction = torch.max(
-            probabilities,
-            dim=1
-        )
-
-    print(f"\nPredicted Digit : {prediction.item()}")
-
-    print(
-        f"Confidence      : {confidence.item()*100:.2f}%"
-    )
+    return prediction
 
 
+# -----------------------------------
+# Run
+# -----------------------------------
 if __name__ == "__main__":
 
-    IMAGE_PATH = "test_images/digit.png"
+    image_path = "test_images/digit3.jpg"
 
-    predict(IMAGE_PATH)
+    prediction = predict(image_path)
+
+    print("=" * 40)
+    print(f"Predicted Digit : {prediction}")
+    print("=" * 40)
